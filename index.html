@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>김밥 튕기기</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            user-select: none;
+        }
+
+        #game-info {
+            position: absolute;
+            top: 20px;
+            font-size: 2em;
+            text-align: center;
+            z-index: 20;
+        }
+
+        #game-container {
+            position: relative;
+            width: 90vmin;
+            height: 90vmin;
+            max-width: 600px;
+            max-height: 600px;
+            border: 5px solid #333;
+            background-color: #87CEEB;
+            overflow: hidden;
+        }
+
+        #gimbap {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background-color: #333;
+            border-radius: 50%;
+            transition: transform 0.1s ease-out;
+            z-index: 10;
+        }
+
+        #gimbap::before {
+            content: '';
+            position: absolute;
+            width: 70%;
+            height: 70%;
+            background-color: #fff;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* 김밥 재료 효과 */
+        .gimbap-filling {
+            position: absolute;
+            background-color: transparent;
+            border-radius: 50%;
+            z-index: 12;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 60%;
+            height: 60%;
+        }
+        .gimbap-filling::before, .gimbap-filling::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+        }
+        .gimbap-filling .carrot {
+            width: 10px;
+            height: 10px;
+            background-color: orange;
+            top: 15%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .gimbap-filling .danmuji {
+            width: 10px;
+            height: 10px;
+            background-color: yellow;
+            bottom: 15%;
+            left: 20%;
+        }
+        .gimbap-filling .spinach {
+            width: 10px;
+            height: 10px;
+            background-color: green;
+            bottom: 15%;
+            right: 20%;
+        }
+
+        #gimbap .eye {
+            width: 8px;
+            height: 8px;
+            background-color: #333;
+            border-radius: 50%;
+            position: absolute;
+            top: 20px;
+            z-index: 13;
+        }
+        #gimbap .eye.left { left: 15px; }
+        #gimbap .eye.right { right: 15px; }
+
+        #gimbap .mouth {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            width: 20px;
+            height: 5px;
+            background-color: #333;
+            border-radius: 0 0 5px 5px;
+            transform: translateX(-50%);
+            transition: all 0.2s ease-out;
+            z-index: 13;
+        }
+        #gimbap.smile .mouth {
+            height: 8px;
+            border-radius: 0 0 20px 20px;
+            border: 2px solid #333;
+            background-color: transparent;
+            border-top: none;
+            bottom: 10px;
+        }
+        #gimbap.sad .mouth {
+            height: 8px;
+            border-radius: 20px 20px 0 0;
+            border: 2px solid #333;
+            background-color: transparent;
+            border-bottom: none;
+            bottom: 20px;
+        }
+        #gimbap.surprised .mouth {
+            width: 10px;
+            height: 10px;
+            background-color: #333;
+            border-radius: 50%;
+        }
+        #gimbap.kya .mouth {
+            width: 15px;
+            height: 15px;
+            background-color: #333;
+            border-radius: 50%;
+            animation: pulse-mouth 0.5s infinite alternate;
+        }
+        
+        @keyframes pulse-mouth {
+            from { transform: translateX(-50%) scale(1); }
+            to { transform: translateX(-50%) scale(1.2); }
+        }
+
+        .target {
+            position: absolute;
+            box-sizing: border-box;
+            cursor: pointer;
+            z-index: 10;
+            transition: border-color 0.1s ease-in-out;
+        }
+
+        /* 네모에 닿았을 때 효과 강조 */
+        .target.active {
+            border: 3px solid #FFEB3B;
+            animation: pulse 0.5s infinite alternate, glow 0.5s infinite alternate;
+        }
+        
+        @keyframes glow {
+            from { box-shadow: 0 0 5px #FFEB3B; }
+            to { box-shadow: 0 0 20px #FFEB3B; }
+        }
+
+        .target.hit {
+            border-color: #00FF00 !important;
+        }
+
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.1); }
+        }
+        
+        #next-stage-button {
+            display: none;
+        }
+
+        #stage-clear-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3em;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            z-index: 30;
+            animation: fade-out 2s forwards;
+        }
+
+        @keyframes fade-out {
+            0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2); }
+        }
+
+        #start-screen, #end-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            z-index: 20;
+        }
+        #start-screen h2, #end-screen h2 { font-size: 2.5em; }
+        #start-screen p, #end-screen p { font-size: 1.2em; }
+        #start-screen button, #end-screen button {
+            padding: 10px 20px;
+            font-size: 1.5em;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-info">
+        <span id="timer-display">남은 시간: 12s</span>
+        <span id="stage-display">스테이지: 1</span>
+    </div>
+    <div id="game-container">
+        <div id="gimbap">
+            <div class="gimbap-filling">
+                <div class="carrot"></div>
+                <div class="danmuji"></div>
+                <div class="spinach"></div>
+            </div>
+            <div class="eye left"></div>
+            <div class="eye right"></div>
+            <div class="mouth"></div>
+        </div>
+        <div id="target-container"></div>
+        <button id="next-stage-button"></button>
+        <div id="start-screen">
+            <h2>김밥 튕기기</h2>
+            <p>12초 동안 김밥을 지켜내세요!</p>
+            <button id="startButton">게임 시작</button>
+        </div>
+        <div id="end-screen" style="display:none;">
+            <h2 id="end-title">게임 오버!</h2>
+            <p id="end-message">다시 시도하세요.</p>
+            <button id="restartButton">다시 시작</button>
+        </div>
+        <div id="stage-clear-message" style="display:none;">
+            스테이지 클리어!
+        </div>
+    </div>
+
+    <script>
+        const gameContainer = document.getElementById('game-container');
+        const gimbap = document.getElementById('gimbap');
+        const targetContainer = document.getElementById('target-container');
+        const timerDisplay = document.getElementById('timer-display');
+        const stageDisplay = document.getElementById('stage-display');
+        const startScreen = document.getElementById('start-screen');
+        const startButton = document.getElementById('startButton');
+        const endScreen = document.getElementById('end-screen');
+        const endTitle = document.getElementById('end-title');
+        const endMessage = document.getElementById('end-message');
+        const restartButton = document.getElementById('restartButton');
+        const nextStageButton = document.getElementById('next-stage-button');
+        const stageClearMessage = document.getElementById('stage-clear-message');
+
+        let gameRunning = false;
+        let gimbapX, gimbapY;
+        let vx, vy;
+        let timer = 12;
+        let gameInterval;
+        let stage = 1;
+        let targets = [];
+        const gimbapSize = 60;
+        const targetCountByStage = [0, 5, 6, 7, 8, 9, 10];
+        const expressions = ['smile', 'sad', 'surprised', 'kya'];
+
+        let currentCollidingTarget = null;
+        let hasClickedThisCollision = false;
+
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+
+        function createTargets() {
+            targetContainer.innerHTML = '';
+            targets = [];
+            const numTargets = targetCountByStage[Math.min(stage, targetCountByStage.length - 1)];
+            const containerSize = gameContainer.clientWidth;
+            const minTargetSize = 50;
+            const maxTargetSize = 90;
+
+            const targetPositions = [];
+            for (let i = 0; i < numTargets; i++) {
+                let newTargetEl;
+                let isOverlapping = true;
+                let attempts = 0;
+
+                while (isOverlapping && attempts < 100) {
+                    newTargetEl = document.createElement('div');
+                    const targetSize = Math.floor(Math.random() * (maxTargetSize - minTargetSize + 1)) + minTargetSize;
+                    newTargetEl.classList.add('target');
+                    newTargetEl.style.width = `${targetSize}px`;
+                    newTargetEl.style.height = `${targetSize}px`;
+                    newTargetEl.style.backgroundColor = getRandomColor();
+                    
+                    const side = Math.floor(Math.random() * 4);
+                    const offset = Math.random() * (containerSize - targetSize);
+                    
+                    let targetX, targetY;
+                    if (side === 0) {
+                        targetY = 0;
+                        targetX = offset;
+                    } else if (side === 1) {
+                        targetY = offset;
+                        targetX = containerSize - targetSize;
+                    } else if (side === 2) {
+                        targetY = containerSize - targetSize;
+                        targetX = offset;
+                    } else {
+                        targetY = offset;
+                        targetX = 0;
+                    }
+                    
+                    newTargetEl.style.top = `${targetY}px`;
+                    newTargetEl.style.left = `${targetX}px`;
+
+                    isOverlapping = false;
+                    for (const pos of targetPositions) {
+                        if (
+                            targetX < pos.x + pos.width &&
+                            targetX + targetSize > pos.x &&
+                            targetY < pos.y + pos.height &&
+                            targetY + targetSize > pos.y
+                        ) {
+                            isOverlapping = true;
+                            break;
+                        }
+                    }
+                    if (!isOverlapping) {
+                        const gimbapX_container = gimbapX;
+                        const gimbapY_container = gimbapY;
+                        if (
+                            targetX < gimbapX_container + gimbapSize &&
+                            targetX + targetSize > gimbapX_container &&
+                            targetY < gimbapY_container + gimbapSize &&
+                            targetY + targetSize > gimbapY_container
+                        ) {
+                            isOverlapping = true;
+                        }
+                    }
+
+                    if (!isOverlapping) {
+                        targetPositions.push({x: targetX, y: targetY, width: targetSize, height: targetSize});
+                        targetContainer.appendChild(newTargetEl);
+                        targets.push({ el: newTargetEl, touched: false });
+                    }
+                    attempts++;
+                }
+            }
+        }
+
+        function updateTimer() {
+            if (gameRunning) {
+                timer--;
+                timerDisplay.textContent = `남은 시간: ${timer}s`;
+                if (timer <= 0) {
+                    nextStage();
+                }
+            }
+        }
+        
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            gimbapX += vx;
+            gimbapY += vy;
+
+            const gameRect = gameContainer.getBoundingClientRect();
+            const minVelocity = 2;
+            const maxVelocity = 10;
+            
+            let bounced = false;
+
+            if ((gimbapX + gimbapSize >= gameRect.width && vx > 0) || (gimbapX <= 0 && vx < 0)) {
+                vx = -vx;
+                bounced = true;
+            }
+            if ((gimbapY + gimbapSize >= gameRect.height && vy > 0) || (gimbapY <= 0 && vy < 0)) {
+                vy = -vy;
+                bounced = true;
+            }
+            
+            if (bounced) {
+                const randomAngle = (Math.random() * 20 - 10) * (Math.PI / 180);
+                const currentAngle = Math.atan2(vy, vx);
+                const speed = Math.sqrt(vx * vx + vy * vy);
+                const newAngle = currentAngle + randomAngle;
+
+                vx = Math.cos(newAngle) * speed;
+                vy = Math.sin(newAngle) * speed;
+
+                vx = Math.min(Math.max(vx, -maxVelocity), maxVelocity);
+                vy = Math.min(Math.max(vy, -maxVelocity), maxVelocity);
+                if (Math.abs(vx) < minVelocity) vx = vx > 0 ? minVelocity : -minVelocity;
+                if (Math.abs(vy) < minVelocity) vy = vy > 0 ? minVelocity : -minVelocity;
+            }
+
+            let isCurrentlyColliding = false;
+            let currentTargetOnCollision = null;
+            targets.forEach(t => {
+                const isColliding = checkCollision(gimbap, t.el);
+                if (isColliding && !t.el.classList.contains('hit')) {
+                    isCurrentlyColliding = true;
+                    currentTargetOnCollision = t.el;
+                }
+            });
+
+            if (isCurrentlyColliding) {
+                if (currentCollidingTarget === null) {
+                    currentCollidingTarget = currentTargetOnCollision;
+                    currentCollidingTarget.classList.add('active');
+                    hasClickedThisCollision = false;
+                }
+            } else {
+                if (currentCollidingTarget !== null) {
+                    if (!hasClickedThisCollision) {
+                        endGame(false, '네모에 닿았지만 클릭하지 못했습니다.');
+                        return;
+                    }
+                    currentCollidingTarget.classList.remove('active');
+                    currentCollidingTarget = null;
+                }
+            }
+
+            gimbap.style.left = `${gimbapX}px`;
+            gimbap.style.top = `${gimbapY}px`;
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function initGame() {
+            startScreen.style.display = 'flex';
+            endScreen.style.display = 'none';
+            stage = 1;
+            stageDisplay.textContent = `스테이지: 1`;
+            timer = 12;
+            timerDisplay.textContent = `남은 시간: 12s`;
+            gimbapX = gameContainer.clientWidth / 2 - gimbapSize / 2;
+            gimbapY = gameContainer.clientHeight / 2 - gimbapSize / 2;
+            vx = 3;
+            vy = 4;
+            createTargets();
+        }
+
+        function startGame() {
+            startScreen.style.display = 'none';
+            endScreen.style.display = 'none';
+            gameRunning = true;
+            gimbapX = gameContainer.clientWidth / 2 - gimbapSize / 2;
+            gimbapY = gameContainer.clientHeight / 2 - gimbapSize / 2;
+            vx = 3;
+            vy = 4;
+            timer = 12;
+            gameInterval = setInterval(updateTimer, 1000);
+            createTargets();
+            requestAnimationFrame(gameLoop);
+        }
+
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', initGame);
+
+        gameContainer.addEventListener('click', (e) => {
+            if (gameRunning && currentCollidingTarget !== null && !hasClickedThisCollision) {
+                const rect = currentCollidingTarget.getBoundingClientRect();
+                const gimbapRect = gimbap.getBoundingClientRect();
+
+                const targetCenterX = rect.left + rect.width / 2;
+                const targetCenterY = rect.top + rect.height / 2;
+                const gimbapCenterX = gimbapRect.left + gimbapRect.width / 2;
+                const gimbapCenterY = gimbapRect.top + gimbapRect.height / 2;
+
+                const angle = Math.atan2(gimbapCenterY - targetCenterY, gimbapCenterX - targetCenterX);
+                const speed = Math.sqrt(vx * vx + vy * vy);
+                vx = -Math.cos(angle) * speed * 1.05;
+                vy = -Math.sin(angle) * speed * 1.05;
+
+                const minVelocity = 2;
+                const maxVelocity = 10;
+                vx = Math.min(Math.max(vx, -maxVelocity), maxVelocity);
+                vy = Math.min(Math.max(vy, -maxVelocity), maxVelocity);
+                if (Math.abs(vx) < minVelocity) vx = vx > 0 ? minVelocity : -minVelocity;
+                if (Math.abs(vy) < minVelocity) vy = vy > 0 ? minVelocity : -minVelocity;
+
+                currentCollidingTarget.classList.add('hit');
+                setTimeout(() => currentCollidingTarget.classList.remove('hit'), 200);
+                hasClickedThisCollision = true;
+
+                const currentExpression = gimbap.className;
+                const availableExpressions = expressions.filter(exp => exp !== currentExpression);
+                const newExpression = availableExpressions[Math.floor(Math.random() * availableExpressions.length)];
+                gimbap.className = '';
+                gimbap.classList.add(newExpression);
+                
+                const allTargetsHit = targets.every(t => t.el.classList.contains('hit'));
+                if (allTargetsHit) {
+                    nextStage();
+                }
+            }
+        });
+
+        function checkCollision(rect1, rect2) {
+            const r1 = rect1.getBoundingClientRect();
+            const r2 = rect2.getBoundingClientRect();
+            return !(
+                r1.right < r2.left ||
+                r1.left > r2.right ||
+                r1.bottom < r2.top ||
+                r1.top > r2.bottom
+            );
+        }
+
+        function nextStage() {
+            if (stage >= 10) { // 최종 스테이지(예: 10)를 설정하고 게임을 종료합니다.
+                endGame(true, '모든 스테이지를 클리어했습니다! 최고에요!');
+                return;
+            }
+            stage++;
+            stageDisplay.textContent = `스테이지: ${stage}`;
+            gimbapX = gameContainer.clientWidth / 2 - gimbapSize / 2;
+            gimbapY = gameContainer.clientHeight / 2 - gimbapSize / 2;
+            vx = vx * 1.05;
+            vy = vy * 1.05;
+            timer = 12;
+            timerDisplay.textContent = `남은 시간: 12s`;
+            
+            // 스테이지 클리어 메시지 표시
+            stageClearMessage.style.display = 'block';
+            setTimeout(() => {
+                stageClearMessage.style.display = 'none';
+            }, 2000);
+
+            createTargets();
+        }
+
+        function endGame(win, message) {
+            gameRunning = false;
+            clearInterval(gameInterval);
+            endScreen.style.display = 'flex';
+            endTitle.textContent = win ? '성공!' : '게임 오버!';
+            endMessage.textContent = message;
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
