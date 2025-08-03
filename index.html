@@ -27,8 +27,8 @@
 
         #game-container {
             position: relative;
-            width: 90vmin;
-            height: 90vmin;
+            width: 80vmin; /* 10% 축소 */
+            height: 80vmin; /* 10% 축소 */
             max-width: 600px;
             max-height: 600px;
             border: 5px solid #333;
@@ -72,11 +72,6 @@
             align-items: center;
             width: 60%;
             height: 60%;
-        }
-        .gimbap-filling::before, .gimbap-filling::after {
-            content: '';
-            position: absolute;
-            border-radius: 50%;
         }
         .gimbap-filling .carrot {
             width: 10px;
@@ -191,6 +186,11 @@
         #next-stage-button {
             display: none;
         }
+        
+        #lives-display {
+            font-size: 1.5em;
+            margin-top: 10px;
+        }
 
         #stage-clear-message {
             position: absolute;
@@ -206,7 +206,7 @@
             z-index: 30;
             animation: fade-out 2s forwards;
         }
-
+        
         @keyframes fade-out {
             0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
             100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2); }
@@ -243,6 +243,7 @@
     <div id="game-info">
         <span id="timer-display">남은 시간: 12s</span>
         <span id="stage-display">스테이지: 1</span>
+        <div id="lives-display">남은 영혼: ❤️❤️❤️</div>
     </div>
     <div id="game-container">
         <div id="gimbap">
@@ -278,6 +279,7 @@
         const targetContainer = document.getElementById('target-container');
         const timerDisplay = document.getElementById('timer-display');
         const stageDisplay = document.getElementById('stage-display');
+        const livesDisplay = document.getElementById('lives-display');
         const startScreen = document.getElementById('start-screen');
         const startButton = document.getElementById('startButton');
         const endScreen = document.getElementById('end-screen');
@@ -293,10 +295,12 @@
         let timer = 12;
         let gameInterval;
         let stage = 1;
+        let lives = 3;
         let targets = [];
         const gimbapSize = 60;
         const targetCountByStage = [0, 5, 6, 7, 8, 9, 10];
         const expressions = ['smile', 'sad', 'surprised', 'kya'];
+        const initialSpeed = 3; // 시작 속도를 상수로 정의
 
         let currentCollidingTarget = null;
         let hasClickedThisCollision = false;
@@ -453,8 +457,14 @@
             } else {
                 if (currentCollidingTarget !== null) {
                     if (!hasClickedThisCollision) {
-                        endGame(false, '네모에 닿았지만 클릭하지 못했습니다.');
-                        return;
+                        lives--;
+                        updateLivesDisplay();
+                        if (lives <= 0) {
+                            endGame(false, '네모에 닿았지만 클릭하지 못했습니다.');
+                            return;
+                        } else {
+                            // 충돌에 실패했어도 게임은 계속 진행
+                        }
                     }
                     currentCollidingTarget.classList.remove('active');
                     currentCollidingTarget = null;
@@ -467,17 +477,25 @@
             requestAnimationFrame(gameLoop);
         }
 
+        function updateLivesDisplay() {
+            livesDisplay.textContent = '남은 영혼: ' + '❤️'.repeat(lives);
+        }
+
         function initGame() {
             startScreen.style.display = 'flex';
             endScreen.style.display = 'none';
             stage = 1;
+            lives = 3;
             stageDisplay.textContent = `스테이지: 1`;
             timer = 12;
             timerDisplay.textContent = `남은 시간: 12s`;
+            updateLivesDisplay();
             gimbapX = gameContainer.clientWidth / 2 - gimbapSize / 2;
             gimbapY = gameContainer.clientHeight / 2 - gimbapSize / 2;
-            vx = 3;
-            vy = 4;
+            vx = initialSpeed;
+            vy = initialSpeed + 1;
+            currentCollidingTarget = null;
+            hasClickedThisCollision = false;
             createTargets();
         }
 
@@ -487,9 +505,13 @@
             gameRunning = true;
             gimbapX = gameContainer.clientWidth / 2 - gimbapSize / 2;
             gimbapY = gameContainer.clientHeight / 2 - gimbapSize / 2;
-            vx = 3;
-            vy = 4;
+            vx = initialSpeed;
+            vy = initialSpeed + 1;
             timer = 12;
+            lives = 3;
+            updateLivesDisplay();
+            currentCollidingTarget = null;
+            hasClickedThisCollision = false;
             gameInterval = setInterval(updateTimer, 1000);
             createTargets();
             requestAnimationFrame(gameLoop);
@@ -510,8 +532,8 @@
 
                 const angle = Math.atan2(gimbapCenterY - targetCenterY, gimbapCenterX - targetCenterX);
                 const speed = Math.sqrt(vx * vx + vy * vy);
-                vx = -Math.cos(angle) * speed * 1.05;
-                vy = -Math.sin(angle) * speed * 1.05;
+                vx = -Math.cos(angle) * speed;
+                vy = -Math.sin(angle) * speed;
 
                 const minVelocity = 2;
                 const maxVelocity = 10;
@@ -549,7 +571,10 @@
         }
 
         function nextStage() {
-            if (stage >= 10) { // 최종 스테이지(예: 10)를 설정하고 게임을 종료합니다.
+            currentCollidingTarget = null;
+            hasClickedThisCollision = false;
+
+            if (stage >= 10) { 
                 endGame(true, '모든 스테이지를 클리어했습니다! 최고에요!');
                 return;
             }
@@ -557,8 +582,11 @@
             stageDisplay.textContent = `스테이지: ${stage}`;
             gimbapX = gameContainer.clientWidth / 2 - gimbapSize / 2;
             gimbapY = gameContainer.clientHeight / 2 - gimbapSize / 2;
-            vx = vx * 1.05;
-            vy = vy * 1.05;
+            
+            // 스테이지마다 속도 2% 증가
+            vx = vx * 1.02;
+            vy = vy * 1.02;
+
             timer = 12;
             timerDisplay.textContent = `남은 시간: 12s`;
             
