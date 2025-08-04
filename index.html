@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=600, user-scalable=no">
     <title>김밥 튕기기</title>
     <style>
         body {
@@ -27,12 +27,13 @@
 
         #game-container {
             position: relative;
-            width: 80vmin; /* 10% 축소 */
-            height: 80vmin; /* 10% 축소 */
+            width: 80vmin;
+            height: 80vmin;
             max-width: 600px;
             max-height: 600px;
             border: 5px solid #333;
-            background-color: #87CEEB;
+            background-size: cover;
+            background-repeat: no-repeat;
             overflow: hidden;
         }
 
@@ -149,7 +150,7 @@
             border-radius: 50%;
             animation: pulse-mouth 0.5s infinite alternate;
         }
-        
+
         @keyframes pulse-mouth {
             from { transform: translateX(-50%) scale(1); }
             to { transform: translateX(-50%) scale(1.2); }
@@ -168,7 +169,7 @@
             border: 3px solid #FFEB3B;
             animation: pulse 0.5s infinite alternate, glow 0.5s infinite alternate;
         }
-        
+
         @keyframes glow {
             from { box-shadow: 0 0 5px #FFEB3B; }
             to { box-shadow: 0 0 20px #FFEB3B; }
@@ -182,11 +183,11 @@
             from { transform: scale(1); }
             to { transform: scale(1.1); }
         }
-        
+
         #next-stage-button {
             display: none;
         }
-        
+
         #lives-display {
             font-size: 1.5em;
             margin-top: 10px;
@@ -206,7 +207,7 @@
             z-index: 30;
             animation: fade-out 2s forwards;
         }
-        
+
         @keyframes fade-out {
             0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
             100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2); }
@@ -300,7 +301,7 @@
         const gimbapSize = 60;
         const targetCountByStage = [0, 5, 6, 7, 8, 9, 10];
         const expressions = ['smile', 'sad', 'surprised', 'kya'];
-        const initialSpeed = 3; // 시작 속도를 상수로 정의
+        const initialSpeed = 3;
 
         let currentCollidingTarget = null;
         let hasClickedThisCollision = false;
@@ -335,10 +336,10 @@
                     newTargetEl.style.width = `${targetSize}px`;
                     newTargetEl.style.height = `${targetSize}px`;
                     newTargetEl.style.backgroundColor = getRandomColor();
-                    
+
                     const side = Math.floor(Math.random() * 4);
                     const offset = Math.random() * (containerSize - targetSize);
-                    
+
                     let targetX, targetY;
                     if (side === 0) {
                         targetY = 0;
@@ -353,7 +354,7 @@
                         targetY = offset;
                         targetX = 0;
                     }
-                    
+
                     newTargetEl.style.top = `${targetY}px`;
                     newTargetEl.style.left = `${targetX}px`;
 
@@ -383,7 +384,7 @@
                     }
 
                     if (!isOverlapping) {
-                        targetPositions.push({x: targetX, y: targetY, width: targetSize, height: targetSize});
+                        targetPositions.push({ x: targetX, y: targetY, width: targetSize, height: targetSize });
                         targetContainer.appendChild(newTargetEl);
                         targets.push({ el: newTargetEl, touched: false });
                     }
@@ -401,7 +402,7 @@
                 }
             }
         }
-        
+
         function gameLoop() {
             if (!gameRunning) return;
 
@@ -411,7 +412,7 @@
             const gameRect = gameContainer.getBoundingClientRect();
             const minVelocity = 2;
             const maxVelocity = 10;
-            
+
             let bounced = false;
 
             if ((gimbapX + gimbapSize >= gameRect.width && vx > 0) || (gimbapX <= 0 && vx < 0)) {
@@ -422,7 +423,7 @@
                 vy = -vy;
                 bounced = true;
             }
-            
+
             if (bounced) {
                 const randomAngle = (Math.random() * 20 - 10) * (Math.PI / 180);
                 const currentAngle = Math.atan2(vy, vx);
@@ -481,6 +482,11 @@
             livesDisplay.textContent = '남은 영혼: ' + '❤️'.repeat(lives);
         }
 
+        function setBackground() {
+            const randomIndex = Math.floor(Math.random() * 6) + 1;
+            gameContainer.style.backgroundImage = `url('${randomIndex}.jpg')`;
+        }
+
         function initGame() {
             startScreen.style.display = 'flex';
             endScreen.style.display = 'none';
@@ -497,6 +503,7 @@
             currentCollidingTarget = null;
             hasClickedThisCollision = false;
             createTargets();
+            setBackground();
         }
 
         function startGame() {
@@ -514,6 +521,7 @@
             hasClickedThisCollision = false;
             gameInterval = setInterval(updateTimer, 1000);
             createTargets();
+            setBackground();
             requestAnimationFrame(gameLoop);
         }
 
@@ -551,7 +559,7 @@
                 const newExpression = availableExpressions[Math.floor(Math.random() * availableExpressions.length)];
                 gimbap.className = '';
                 gimbap.classList.add(newExpression);
-                
+
                 const allTargetsHit = targets.every(t => t.el.classList.contains('hit'));
                 if (allTargetsHit) {
                     nextStage();
@@ -574,7 +582,7 @@
             currentCollidingTarget = null;
             hasClickedThisCollision = false;
 
-            if (stage >= 10) { 
+            if (stage >= 10) {
                 endGame(true, '모든 스테이지를 클리어했습니다! 최고에요!');
                 return;
             }
@@ -582,21 +590,20 @@
             stageDisplay.textContent = `스테이지: ${stage}`;
             gimbapX = gameContainer.clientWidth / 2 - gimbapSize / 2;
             gimbapY = gameContainer.clientHeight / 2 - gimbapSize / 2;
-            
-            // 스테이지마다 속도 2% 증가
+
             vx = vx * 1.02;
             vy = vy * 1.02;
 
             timer = 12;
             timerDisplay.textContent = `남은 시간: 12s`;
-            
-            // 스테이지 클리어 메시지 표시
+
             stageClearMessage.style.display = 'block';
             setTimeout(() => {
                 stageClearMessage.style.display = 'none';
             }, 2000);
 
             createTargets();
+            setBackground();
         }
 
         function endGame(win, message) {
